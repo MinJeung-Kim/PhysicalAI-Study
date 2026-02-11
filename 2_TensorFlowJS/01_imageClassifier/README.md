@@ -20,8 +20,9 @@
 2. 웹캠 접근 권한을 허용합니다
 3. MobileNet 모델이 로딩될 때까지 기다립니다 (콘솔에 "MobileNet Loaded" 표시)
 
-## 실행 화면 
-![실행 데모](demo.gif)  
+## 실행 화면   
+https://github.com/user-attachments/assets/6b37df5b-2fcf-4f63-b81b-9750de02337a
+
 
 ## 사용 방법
 
