@@ -114,7 +114,8 @@ async function predict() {
 
 
 ## 실행 화면 
-![실행 데모](demo.gif) 
+https://github.com/user-attachments/assets/bf7066d9-2d26-4443-802b-c3b4af1ab392
+
 
 ## 사용 방법
 1. 브라우저에서 `index.html` 열기
