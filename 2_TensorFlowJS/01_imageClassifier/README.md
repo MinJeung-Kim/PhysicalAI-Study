@@ -21,10 +21,7 @@
 3. MobileNet 모델이 로딩될 때까지 기다립니다 (콘솔에 "MobileNet Loaded" 표시)
 
 ## 실행 화면 
-<video width="640" controls>
-  <source src="demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video> 
+![실행 데모](demo.gif)  
 
 ## 사용 방법
 

@@ -114,10 +114,7 @@ async function predict() {
 
 
 ## 실행 화면 
-<video width="640" controls>
-  <source src="demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video> 
+![실행 데모](demo.gif) 
 
 ## 사용 방법
 1. 브라우저에서 `index.html` 열기

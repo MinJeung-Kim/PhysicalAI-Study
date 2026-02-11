@@ -93,10 +93,12 @@ MediaPipe Hands는 손에서 21개의 랜드마크를 감지합니다:
 - **17-20**: 새끼손가락 (Pinky)
 
 ## 실행 화면 
-<video width="640" controls>
+![실행 데모](demo.gif) 
+
+<!-- <video width="640" controls>
   <source src="demo.mp4" type="video/mp4">
   Your browser does not support the video tag.
-</video> 
+</video>  -->
  
 
 ## 실행 방법

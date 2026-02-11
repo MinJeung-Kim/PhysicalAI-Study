@@ -84,10 +84,7 @@ if (object.grabbed) {
 
 
 ## 실행 화면 
-<video width="640" controls>
-  <source src="demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video> 
+![실행 데모](demo.gif)  
  
 
 ## 🚀 실행 방법
