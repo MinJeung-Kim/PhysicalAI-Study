@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>TensorFlow.js Webcam Classifier</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.16.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+        }
+
+        video {
+            margin-top: 20px;
+        }
+
+        button {
+            margin: 5px;
+            padding: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Webcam Image Classifier</h2>
+
+    <video id="webcam" autoplay playsinline width="224" height="224"></video>
+
+    <div>
+        <button onclick="addExample(0)">Class A</button>
+        <button onclick="addExample(1)">Class B</button>
+    </div>
+
+    <button onclick="train()">Train</button>
+
+    <h3 id="result">Prediction: -</h3>
+
+    <script>
+
+        let model;
+        let mobilenetModel;
+        let webcam;
+        let dataset = [];
+        let labels = [];
+
+        async function setup() {
+            webcam = document.getElementById("webcam");
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            webcam.srcObject = stream;
+
+            mobilenetModel = await mobilenet.load();
+            console.log("MobileNet Loaded");
+        }
+
+        function captureImage() {
+            return tf.tidy(() => {
+                const img = tf.browser.fromPixels(webcam)
+                    .resizeNearestNeighbor([224, 224])
+                    .toFloat()
+                    .expandDims();
+                return mobilenetModel.infer(img, true);
+            });
+        }
+
+        function addExample(label) {
+            const activation = captureImage();
+            dataset.push(activation);
+            labels.push(label);
+            console.log("Example added:", label);
+        }
+
+        async function train() {
+
+            const xs = tf.concat(dataset);
+            const ys = tf.oneHot(tf.tensor1d(labels, 'int32'), 2);
+
+            model = tf.sequential();
+            model.add(tf.layers.dense({
+                inputShape: xs.shape.slice(1),
+                units: 100,
+                activation: 'relu'
+            }));
+            model.add(tf.layers.dense({
+                units: 2,
+                activation: 'softmax'
+            }));
+
+            model.compile({
+                optimizer: tf.train.adam(0.0001),
+                loss: 'categoricalCrossentropy',
+                metrics: ['accuracy']
+            });
+
+            await model.fit(xs, ys, {
+                epochs: 20
+            });
+
+            console.log("Training Complete");
+
+            predict();
+        }
+
+        async function predict() {
+            while (true) {
+                const activation = captureImage();
+                const prediction = model.predict(activation);
+                const result = await prediction.data();
+
+                document.getElementById("result").innerText =
+                    result[0] > result[1] ? "Class A" : "Class B";
+
+                await tf.nextFrame();
+            }
+        }
+
+        setup();
+
+    </script>
+</body>
+
+</html>

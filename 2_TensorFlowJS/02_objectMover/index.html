@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>AI Object Control</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.16.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+        }
+
+        canvas {
+            border: 2px solid black;
+            margin-top: 10px;
+        }
+
+        button {
+            margin: 5px;
+            padding: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>AI로 물체 제어하기</h2>
+
+    <video id="webcam" autoplay playsinline width="224" height="224"></video>
+
+    <div>
+        <button onclick="addExample(0)">Left Pose (Class A)</button>
+        <button onclick="addExample(1)">Right Pose (Class B)</button>
+    </div>
+
+    <button onclick="train()">Train</button>
+
+    <h3 id="result">Prediction: -</h3>
+
+    <canvas id="canvas" width="600" height="200"></canvas>
+
+    <script>
+
+        let model;
+        let mobilenetModel;
+        let webcam;
+        let dataset = [];
+        let labels = [];
+
+        let ballX = 300;
+        let ballY = 100;
+
+        const ctx = document.getElementById("canvas").getContext("2d");
+
+        function drawBall() {
+            ctx.clearRect(0, 0, 600, 200);
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, 30, 0, Math.PI * 2);
+            ctx.fillStyle = "cyan";
+            ctx.fill();
+        }
+
+        drawBall();
+
+        async function setup() {
+            webcam = document.getElementById("webcam");
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            webcam.srcObject = stream;
+
+            mobilenetModel = await mobilenet.load();
+            console.log("MobileNet Loaded");
+        }
+
+        function captureImage() {
+            return tf.tidy(() => {
+                const img = tf.browser.fromPixels(webcam)
+                    .resizeNearestNeighbor([224, 224])
+                    .toFloat()
+                    .expandDims();
+                return mobilenetModel.infer(img, true);
+            });
+        }
+
+        function addExample(label) {
+            const activation = captureImage();
+            dataset.push(activation);
+            labels.push(label);
+            console.log("Example added:", label);
+        }
+
+        async function train() {
+
+            const xs = tf.concat(dataset);
+            const ys = tf.oneHot(tf.tensor1d(labels, 'int32'), 2);
+
+            model = tf.sequential();
+            model.add(tf.layers.dense({
+                inputShape: xs.shape.slice(1),
+                units: 100,
+                activation: 'relu'
+            }));
+            model.add(tf.layers.dense({
+                units: 2,
+                activation: 'softmax'
+            }));
+
+            model.compile({
+                optimizer: tf.train.adam(0.0001),
+                loss: 'categoricalCrossentropy',
+                metrics: ['accuracy']
+            });
+
+            await model.fit(xs, ys, {
+                epochs: 20
+            });
+
+            predict();
+        }
+
+        async function predict() {
+            while (true) {
+
+                const activation = captureImage();
+                const prediction = model.predict(activation);
+                const result = await prediction.data();
+
+                if (result[0] > result[1]) {
+                    ballX -= 5; // 왼쪽 이동
+                    document.getElementById("result").innerText = "Move Left";
+                } else {
+                    ballX += 5; // 오른쪽 이동
+                    document.getElementById("result").innerText = "Move Right";
+                }
+
+                // 화면 경계 제한
+                ballX = Math.max(30, Math.min(570, ballX));
+
+                drawBall();
+
+                await tf.nextFrame();
+            }
+        }
+
+        setup();
+
+    </script>
+</body>
+
+</html>

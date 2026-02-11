@@ -1,0 +1,125 @@
+<!DOCTYPE html>  
+<html> 
+
+<head> 
+    <meta charset="UTF-8" /> 
+    <title>MediaPipe Hand Tracking - Pinch Detection</title> 
+
+    <!-- MediaPipe 라이브러리 CDN 로드 시작 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script> <!-- MediaPipe Hands 핵심 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script> <!-- 카메라 제어 유틸리티 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script> <!-- 랜드마크 그리기 유틸리티 -->
+
+    <style>  
+        body {
+            margin: 0;  
+            background: #111;  
+            display: flex;  
+            flex-direction: column;  
+            align-items: center;  
+            color: white;  
+            font-family: sans-serif;  
+        }
+
+        canvas {
+            border: 2px solid #444;  
+            margin-top: 10px;  
+        }
+
+        #status {
+            margin-top: 15px;  
+            font-size: 24px;  
+            font-weight: bold;  
+        }
+    </style>  
+</head>  
+
+<body>  
+
+    <h2>MediaPipe Hand Tracking (Pinch Detection)</h2>  
+
+    <video class="input_video" style="display:none;"></video> <!-- 웹캠 비디오 요소 (화면에 표시 안 함) -->
+    <canvas class="output_canvas" width="640" height="480"></canvas> <!-- 결과 출력용 캔버스 (640x480 크기) -->
+
+    <div id="status">✋ 손을 보여주세요</div> <!-- 상태 메시지 표시 영역 -->
+
+    <script> 
+        const videoElement = document.querySelector('.input_video'); // 비디오 요소 선택하여 변수에 저장
+        const canvasElement = document.querySelector('.output_canvas'); // 캔버스 요소 선택하여 변수에 저장
+        const canvasCtx = canvasElement.getContext('2d'); // 2D 그리기를 위한 캔버스 컨텍스트 가져오기
+        const statusText = document.getElementById('status'); // 상태 텍스트 요소 선택하여 변수에 저장
+
+        // MediaPipe Hands 초기화 - Hands 객체 생성
+        const hands = new Hands({ // 새로운 Hands 인스턴스 생성
+            locateFile: (file) => { // 모델 파일 위치 지정 함수
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`; // CDN에서 파일 경로 반환
+            }
+        });
+
+        hands.setOptions({ // Hands 모델 옵션 설정
+            maxNumHands: 1, // 최대 감지할 손의 개수를 1개로 제한
+            modelComplexity: 1, // 모델 복잡도 설정 (0: 가벼움, 1: 보통, 2: 정확)
+            minDetectionConfidence: 0.7, // 손 감지 최소 신뢰도 (0.0~1.0)
+            minTrackingConfidence: 0.7 // 손 추적 최소 신뢰도 (0.0~1.0)
+        });
+
+        hands.onResults(results => { // 손 감지 결과를 받아 처리하는 콜백 함수
+            canvasCtx.save(); // 현재 캔버스 상태 저장
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height); // 캔버스 전체를 지워서 초기화
+            canvasCtx.drawImage( // 비디오 이미지를 캔버스에 그리기
+                results.image, // 웹캠에서 캡처한 이미지
+                0, // 그리기 시작 X 좌표
+                0, // 그리기 시작 Y 좌표
+                canvasElement.width, // 그릴 이미지의 너비
+                canvasElement.height // 그릴 이미지의 높이
+            );
+
+            if (results.multiHandLandmarks) { // 손 랜드마크가 감지되었는지 확인
+                const landmarks = results.multiHandLandmarks[0]; // 첫 번째 손의 랜드마크 데이터 가져오기
+
+                // 손 랜드마크 그리기
+                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS); // 손가락 뼈대(연결선) 그리기
+                drawLandmarks(canvasCtx, landmarks); // 손 관절(랜드마크 점) 그리기
+
+                // 엄지 끝(4번) & 검지 끝(8번)
+                const thumbTip = landmarks[4]; // 엄지 손가락 끝 좌표 가져오기 (랜드마크 인덱스 4번)
+                const indexTip = landmarks[8]; // 검지 손가락 끝 좌표 가져오기 (랜드마크 인덱스 8번)
+
+                // 거리 계산 - 유클리드 거리 공식 사용
+                const distance = Math.sqrt( // 제곱근 계산
+                    Math.pow(thumbTip.x - indexTip.x, 2) + // X축 거리의 제곱
+                    Math.pow(thumbTip.y - indexTip.y, 2) // Y축 거리의 제곱
+                ); // 두 손가락 끝 사이의 직선 거리
+
+                // 임계값 비교하여 핀치 동작 판별
+                if (distance < 0.05) { // 거리가 0.05보다 작으면 (손가락이 가까우면)
+                    statusText.innerText = "🤏 집기 동작 감지!"; // 상태 텍스트를 집기 감지로 변경
+                    statusText.style.color = "lime"; // 텍스트 색상을 연두색으로 변경
+                } else { // 거리가 0.05 이상이면 (손가락이 멀면)
+                    statusText.innerText = "✋ 손을 보여주세요"; // 상태 텍스트를 기본 메시지로 변경
+                    statusText.style.color = "white"; // 텍스트 색상을 흰색으로 변경
+                }
+
+            } else { // 손이 감지되지 않았을 때
+                statusText.innerText = "✋ 손을 보여주세요"; // 상태 텍스트를 기본 메시지로 설정
+                statusText.style.color = "white"; // 텍스트 색상을 흰색으로 설정
+            }
+
+            canvasCtx.restore(); // 저장했던 캔버스 상태 복원
+        });
+
+        // 카메라 연결 및 설정
+        const camera = new Camera(videoElement, { // 새로운 Camera 인스턴스 생성
+            onFrame: async () => { // 매 프레임마다 실행될 비동기 함수
+                await hands.send({ image: videoElement }); // 현재 비디오 프레임을 Hands 모델로 전송하여 처리
+            },
+            width: 640, // 카메라 해상도 너비 640픽셀
+            height: 480 // 카메라 해상도 높이 480픽셀
+        });
+
+        camera.start(); // 카메라 시작 (웹캠 활성화 및 프레임 캡처 시작)
+    </script>  
+
+</body> 
+
+</html>  
